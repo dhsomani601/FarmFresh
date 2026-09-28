@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
@@ -11,12 +11,44 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [serverOtp, setServerOtp] = useState(null);
+  const [emailDelivered, setEmailDelivered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Timers
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes (600s)
+  const [resendCooldown, setResendCooldown] = useState(30); // 30s cooldown before resend
+  const otpInputRef = useRef(null);
+
   const { verifyRegister } = useAuth();
   const navigate = useNavigate();
+
+  // Countdown timer for OTP validity (10 minutes) and Resend cooldown
+  useEffect(() => {
+    let timer;
+    if (step === 2 && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, timeLeft]);
+
+  // Focus OTP input when moving to Step 2
+  useEffect(() => {
+    if (step === 2 && otpInputRef.current) {
+      otpInputRef.current.focus();
+    }
+  }, [step]);
+
+  const formatTimer = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Step 1: Request OTP
   const handleRequestOtp = async (e) => {
@@ -28,45 +60,93 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       const data = await api.requestRegisterOtp({ name, email, password });
-      setPreviewUrl(data.previewUrl || null);
-      setToast({ 
-        type: 'success', 
-        message: data.message || `Verification code sent to ${email}` 
-      });
+      
+      setServerOtp(data.otp || null);
+      setEmailDelivered(!!data.emailDelivered);
+      setTimeLeft(600);
+      setResendCooldown(30);
       setStep(2);
+
+      if (data.emailDelivered) {
+        setToast({
+          type: 'success',
+          message: `✉️ Verification code sent to ${email}! Please check your email inbox.`
+        });
+      } else {
+        setToast({
+          type: 'info',
+          message: `🔑 Verification code generated! (Valid for 10 minutes)`
+        });
+      }
     } catch (err) {
-      setToast({ type: 'error', message: err.message });
+      setToast({ type: 'error', message: err.message || 'Failed to send verification code.' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2: Verify OTP & Complete Registration
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (!otp || otp.trim().length !== 6) {
+  // Verification Logic (used by both manual submit and auto-submit)
+  const triggerVerify = async (codeToVerify) => {
+    const cleanCode = (codeToVerify || otp).trim();
+    if (!cleanCode || cleanCode.length !== 6) {
       setToast({ type: 'error', message: 'Please enter the 6-digit verification code' });
+      return;
+    }
+    if (timeLeft <= 0) {
+      setToast({ type: 'error', message: 'Verification code has expired. Please click Resend Code.' });
       return;
     }
     try {
       setLoading(true);
-      await verifyRegister(name, email, password, otp.trim());
-      setToast({ type: 'success', message: 'Account verified! Welcome to FreshMart!' });
-      setTimeout(() => navigate('/products'), 1000);
+      await verifyRegister(name, email, password, cleanCode);
+      setToast({ type: 'success', message: '✅ Account verified! Logged in successfully. Redirecting...' });
+      setTimeout(() => navigate('/products'), 800);
     } catch (err) {
-      setToast({ type: 'error', message: err.message });
-    } finally {
+      setToast({ type: 'error', message: err.message || 'Invalid verification code.' });
       setLoading(false);
+    }
+  };
+
+  // Step 2: Manual Form Submit
+  const handleVerifySubmit = (e) => {
+    e.preventDefault();
+    triggerVerify(otp);
+  };
+
+  // Auto-submit when 6 digits are typed or pasted
+  const handleOtpChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtp(val);
+    if (val.length === 6 && !loading) {
+      triggerVerify(val);
+    }
+  };
+
+  // Quick fill test code helper
+  const handleQuickFill = () => {
+    if (serverOtp) {
+      setOtp(serverOtp);
+      triggerVerify(serverOtp);
     }
   };
 
   // Resend OTP
   const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
     try {
       setResending(true);
       const data = await api.requestRegisterOtp({ name, email, password });
-      setPreviewUrl(data.previewUrl || null);
-      setToast({ type: 'info', message: 'A fresh verification code has been sent to your email.' });
+      setServerOtp(data.otp || null);
+      setEmailDelivered(!!data.emailDelivered);
+      setTimeLeft(600);
+      setResendCooldown(30);
+      setOtp('');
+      setToast({
+        type: 'success',
+        message: data.emailDelivered
+          ? `Fresh verification code sent to ${email}!`
+          : `Fresh verification code generated!`
+      });
     } catch (err) {
       setToast({ type: 'error', message: err.message });
     } finally {
@@ -87,9 +167,9 @@ export default function RegisterPage() {
             <span className="auth-icon">{step === 1 ? '🌿' : '📩'}</span>
             <h1>{step === 1 ? 'Create Account' : 'Verify Your Email'}</h1>
             <p>
-              {step === 1 
-                ? 'Join FreshMart for fresh, organic groceries' 
-                : `We sent a 6-digit code to ${email}`}
+              {step === 1
+                ? 'Join FreshMart for fresh, organic groceries'
+                : `We sent a 6-digit verification code to ${email}`}
             </p>
           </div>
 
@@ -135,69 +215,122 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <button 
-                type="submit" 
-                className="btn btn-primary btn-lg" 
-                style={{ width: '100%' }} 
-                disabled={loading} 
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%' }}
+                disabled={loading}
                 id="register-submit"
               >
                 {loading ? '⟳ Sending Verification Code...' : 'Get Verification Code ✉️'}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="auth-form">
-              <div className="input-group">
-                <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Enter 6-Digit OTP</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setStep(1)} 
-                    style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}
+            <form onSubmit={handleVerifySubmit} className="auth-form">
+              {/* Active Timer Pill */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: timeLeft > 60 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                border: `1px solid ${timeLeft > 60 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                borderRadius: '10px',
+                marginBottom: '16px'
+              }}>
+                <span style={{ fontSize: '13px', color: timeLeft > 60 ? '#22c55e' : '#ef4444', fontWeight: '600' }}>
+                  ⏱️ OTP Valid For: <strong>{formatTimer(timeLeft)}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}
+                >
+                  Edit Email
+                </button>
+              </div>
+
+              {/* Email Delivery Status or Demo Code Banner */}
+              {emailDelivered ? (
+                <div style={{ padding: '8px 12px', background: 'rgba(34, 197, 94, 0.08)', borderRadius: '8px', fontSize: '12px', textAlign: 'center', color: '#22c55e', marginBottom: '14px' }}>
+                  📬 Real email sent to <strong>{email}</strong>. Check inbox or spam folder.
+                </div>
+              ) : serverOtp ? (
+                <div style={{
+                  padding: '10px 12px',
+                  background: 'rgba(255, 122, 0, 0.12)',
+                  border: '1px solid rgba(255, 122, 0, 0.3)',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  marginBottom: '14px'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#ff7a00', marginBottom: '6px' }}>
+                    🔑 Code: <strong style={{ fontSize: '16px', letterSpacing: '2px' }}>{serverOtp}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickFill}
+                    className="btn btn-sm btn-secondary"
+                    style={{ fontSize: '12px', padding: '4px 10px' }}
                   >
-                    Change Email
+                    ⚡ Auto-Fill & Verify Code
                   </button>
+                </div>
+              ) : null}
+
+              <div className="input-group">
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Enter 6-Digit OTP</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Auto-submits on 6th digit</span>
                 </label>
                 <input
+                  ref={otpInputRef}
                   type="text"
                   maxLength={6}
                   className="input-field"
                   placeholder="• • • • • •"
                   style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px', fontWeight: 'bold' }}
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  onChange={handleOtpChange}
                   required
                   autoFocus
                   id="register-otp"
                 />
               </div>
 
-              {previewUrl && (
-                <div style={{ padding: '10px 14px', background: 'rgba(22, 163, 74, 0.1)', border: '1px solid rgba(22, 163, 74, 0.3)', borderRadius: '8px', fontSize: '13px', textAlign: 'center', color: '#16a34a', marginBottom: '12px' }}>
-                  📬 Test Inbox Active: <a href={previewUrl} target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 'bold', textDecoration: 'underline' }}>View Test Email OTP</a>
-                </div>
-              )}
-
-              <button 
-                type="submit" 
-                className="btn btn-primary btn-lg" 
-                style={{ width: '100%', marginBottom: '10px' }} 
-                disabled={loading || otp.length !== 6} 
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%', marginBottom: '12px' }}
+                disabled={loading || otp.length !== 6 || timeLeft <= 0}
                 id="register-verify-submit"
               >
-                {loading ? '⟳ Verifying OTP...' : 'Verify & Create Account 🚀'}
+                {loading ? '⟳ Verifying & Logging in...' : 'Verify & Log In 🚀'}
               </button>
 
-              <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '14px' }}>
-                Didn't receive the code?{' '}
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={resending}
-                  style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  {resending ? 'Sending...' : 'Resend Code'}
-                </button>
+              <div style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-muted)' }}>
+                Didn't get the code?{' '}
+                {resendCooldown > 0 ? (
+                  <span style={{ color: '#94a3b8', fontSize: '13px' }}>
+                    Resend in <strong>{resendCooldown}s</strong>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resending}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#16a34a',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    {resending ? 'Sending...' : 'Resend Code'}
+                  </button>
+                )}
               </div>
             </form>
           )}

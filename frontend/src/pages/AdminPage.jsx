@@ -7,8 +7,8 @@ export default function AdminPage() {
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('grocery_admin_token'));
   
   // Admin Login State
-  const [adminUsername, setAdminUsername] = useState('admin');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
@@ -234,18 +234,6 @@ export default function AdminPage() {
               <h1 className="admin-login-title">Admin Control Portal</h1>
               <p className="admin-login-desc">Enter administrator credentials to manage inventory, users, and orders.</p>
 
-              {/* Temporary Credentials Banner */}
-              <div className="temp-creds-banner">
-                <div className="temp-creds-header">
-                  <span>🔑 Temporary Admin Credentials</span>
-                </div>
-                <div className="temp-creds-body">
-                  <div>Username: <strong>admin</strong></div>
-                  <div>Password: <strong>admin123</strong></div>
-                </div>
-                <small className="temp-creds-note">You can change these credentials inside the dashboard after logging in.</small>
-              </div>
-
               {loginError && <div className="admin-login-error">⚠️ {loginError}</div>}
 
               <form onSubmit={handleAdminLogin} className="admin-login-form">
@@ -274,15 +262,6 @@ export default function AdminPage() {
                     required
                   />
                 </div>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ width: '100%', marginBottom: '12px' }}
-                  onClick={() => { setAdminUsername('admin'); setAdminPassword('admin123'); }}
-                >
-                  ⚡ Autofill Default Admin Credentials
-                </button>
 
                 <button
                   type="submit"

@@ -35,18 +35,30 @@ export async function requestRegisterOtp(req, res) {
 
     console.log(`\n🔑 [REGISTRATION OTP] Generated for ${email}: ${otp} (10 min expiry)`);
 
-    // Dispatch real email via nodemailer
-    const emailResult = await sendOtpEmail(email.trim().toLowerCase(), otp, 'registration');
+    // Dispatch real email via nodemailer safely with timeout so response is never stuck
+    let emailDelivered = false;
+    try {
+      const emailResult = await Promise.race([
+        sendOtpEmail(email.trim().toLowerCase(), otp, 'registration'),
+        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 3500))
+      ]);
+      emailDelivered = !!emailResult?.success;
+    } catch (e) {
+      console.warn('Email dispatch notice:', e.message);
+    }
 
     res.json({
-      message: `Verification code sent to ${email}.`,
-      otp, // Provided in development for convenience
-      previewUrl: emailResult?.previewUrl || null,
-      expiresIn: '10 minutes'
+      message: emailDelivered 
+        ? `Verification code sent to ${email}. Please check your email inbox!` 
+        : `Verification code generated for ${email}!`,
+      emailDelivered,
+      otp, // Always returned for instant fallback / local testing
+      expiresIn: '10 minutes',
+      expiresAt
     });
   } catch (err) {
     console.error('RequestRegisterOtp error:', err);
-    res.status(500).json({ error: 'Failed to send registration OTP.' });
+    res.status(500).json({ error: 'Failed to generate registration OTP.' });
   }
 }
 
@@ -234,18 +246,30 @@ export async function requestOtp(req, res) {
 
     console.log(`\n🔑 [PASSWORD RESET OTP] Generated for ${cleanEmail}: ${otp} (10 min expiry)`);
 
-    // Dispatch real email via nodemailer
-    const emailResult = await sendOtpEmail(cleanEmail, otp, 'password_reset');
+    // Dispatch real email via nodemailer safely with timeout so response is never stuck
+    let emailDelivered = false;
+    try {
+      const emailResult = await Promise.race([
+        sendOtpEmail(cleanEmail, otp, 'password_reset'),
+        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 3500))
+      ]);
+      emailDelivered = !!emailResult?.success;
+    } catch (e) {
+      console.warn('Email dispatch notice:', e.message);
+    }
 
     res.json({
-      message: `Password reset code sent to ${cleanEmail}.`,
-      otp, // Provided in development for convenience
-      previewUrl: emailResult?.previewUrl || null,
-      expiresIn: '10 minutes'
+      message: emailDelivered 
+        ? `Password reset code sent to ${cleanEmail}. Please check your email inbox!` 
+        : `Password reset code generated for ${cleanEmail}!`,
+      emailDelivered,
+      otp, // Always returned for instant fallback / local testing
+      expiresIn: '10 minutes',
+      expiresAt
     });
   } catch (err) {
     console.error('RequestOtp error:', err);
-    res.status(500).json({ error: 'Failed to send OTP email.' });
+    res.status(500).json({ error: 'Failed to generate reset OTP.' });
   }
 }
 

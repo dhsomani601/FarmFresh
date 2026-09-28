@@ -6,7 +6,7 @@ let transporter = null;
 export async function getMailerTransporter() {
   if (transporter) return transporter;
 
-  // Check if SMTP environment variables are provided (e.g. Gmail App Password, Brevo, SendGrid)
+  // Check if SMTP environment variables are provided (e.g. Gmail App Password, Brevo, SendGrid, Mailgun)
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -21,33 +21,20 @@ export async function getMailerTransporter() {
         auth: {
           user: smtpUser,
           pass: smtpPass
-        }
+        },
+        connectionTimeout: 4000,
+        greetingTimeout: 3000,
+        socketTimeout: 5000
       });
-      console.log(`📧 [Mailer] Configured custom SMTP transporter for ${smtpUser}`);
+      console.log(`📧 [Mailer] Configured SMTP transporter for ${smtpUser} via ${smtpHost}:${smtpPort}`);
       return transporter;
     } catch (e) {
       console.error('Failed to initialize custom SMTP:', e);
     }
   }
 
-  // Fallback to real Ethereal test account (provides live browser preview link for real email delivery inspection)
-  try {
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass
-      }
-    });
-    console.log(`📧 [Mailer] Configured real Ethereal Mailer (${testAccount.user})`);
-    return transporter;
-  } catch (err) {
-    console.error('Failed to create Ethereal test email account, using mock transporter:', err);
-    return null;
-  }
+  // If no custom SMTP credentials provided, return null to avoid hanging network calls
+  return null;
 }
 
 /**
@@ -112,7 +99,7 @@ export async function sendOtpEmail(toEmail, otp, purpose = 'registration') {
   try {
     const mailer = await getMailerTransporter();
     if (mailer) {
-      const fromAddr = process.env.SMTP_FROM || '"FreshMart" <no-reply@freshmart.in>';
+      const fromAddr = process.env.SMTP_FROM || `FreshMart <${process.env.SMTP_USER || 'no-reply@freshmart.in'}>`;
       const info = await mailer.sendMail({
         from: fromAddr,
         to: toEmail,
@@ -122,15 +109,14 @@ export async function sendOtpEmail(toEmail, otp, purpose = 'registration') {
       });
 
       console.log(`\n📨 [REAL EMAIL SENT] To: ${toEmail} | MessageId: ${info.messageId}`);
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) {
-        console.log(`🔗 [Live Email Web Preview]: ${previewUrl}\n`);
-      }
-      return { success: true, previewUrl };
+      return { success: true };
+    } else {
+      console.log(`\n🔑 [EMAIL OTP READY] Recipient: ${toEmail} | Code: ${otp} (Valid 10 mins)`);
+      console.log(`💡 [Mailer Tip] To deliver directly to external mailboxes, set SMTP_USER and SMTP_PASS in backend/.env\n`);
+      return { success: false, notConfigured: true };
     }
   } catch (err) {
-    console.error('Failed to send email:', err);
+    console.error('Failed to send email:', err.message);
+    return { success: false, error: err.message };
   }
-
-  return { success: false };
 }
