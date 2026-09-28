@@ -167,6 +167,75 @@ export function getDashboard(req, res) {
   }
 }
 
+export function addProduct(req, res) {
+  try {
+    const { name, category, price, old_price, unit, emoji, stock, status, description } = req.body;
+
+    if (!name || !category || price === undefined) {
+      return res.status(400).json({ error: 'Product name, category, and price are required.' });
+    }
+
+    const prodPrice = parseFloat(price);
+    const prodOldPrice = old_price ? parseFloat(old_price) : null;
+    const prodStock = stock !== undefined ? parseInt(stock) : 50;
+    const prodStatus = status || (prodStock === 0 ? 'sold_out' : 'available');
+    const prodUnit = unit || '1 kg';
+    const prodEmoji = emoji || '🍎';
+    const prodDesc = description || '';
+
+    const result = execute(
+      `INSERT INTO products (name, category, price, old_price, unit, emoji, stock, status, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name.trim(), category.trim(), prodPrice, prodOldPrice, prodUnit.trim(), prodEmoji.trim(), prodStock, prodStatus, prodDesc.trim()]
+    );
+
+    const newProduct = queryOne('SELECT * FROM products WHERE id = ?', [result.lastInsertRowid]);
+    res.status(201).json({ message: 'Product added successfully!', product: newProduct });
+  } catch (err) {
+    console.error('Add product error:', err);
+    res.status(500).json({ error: 'Failed to add product.' });
+  }
+}
+
+export function deleteProduct(req, res) {
+  try {
+    const { id } = req.params;
+    const product = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(id)]);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    execute('DELETE FROM products WHERE id = ?', [parseInt(id)]);
+    res.json({ message: `Product "${product.name}" deleted successfully.` });
+  } catch (err) {
+    console.error('Delete product error:', err);
+    res.status(500).json({ error: 'Failed to delete product.' });
+  }
+}
+
+export function updateOrderStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required.' });
+    }
+
+    const order = queryOne('SELECT * FROM orders WHERE id = ?', [parseInt(id)]);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    execute('UPDATE orders SET status = ? WHERE id = ?', [status.trim(), parseInt(id)]);
+    const updated = queryOne('SELECT * FROM orders WHERE id = ?', [parseInt(id)]);
+    res.json({ message: 'Order status updated successfully!', order: updated });
+  } catch (err) {
+    console.error('Update order status error:', err);
+    res.status(500).json({ error: 'Failed to update order status.' });
+  }
+}
+
 export function getOrderDetails(req, res) {
   try {
     const order = queryAll(`

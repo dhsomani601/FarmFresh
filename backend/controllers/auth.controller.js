@@ -2,6 +2,113 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { queryOne, execute } from '../db/database.js';
 import { JWT_SECRET } from '../middleware/auth.js';
+import { sendOtpEmail } from '../utils/mailer.js';
+
+// Send OTP to user's real email for registration
+export async function requestRegisterOtp(req, res) {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const existing = queryOne('SELECT id FROM users WHERE email = ?', [email.trim().toLowerCase()]);
+    if (existing) {
+      return res.status(409).json({ error: 'An account with this email already exists. Please sign in.' });
+    }
+
+    // Generate random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Store in otps table
+    execute('DELETE FROM otps WHERE email = ?', [email.trim().toLowerCase()]);
+    execute(
+      'INSERT INTO otps (email, otp, type, expires_at) VALUES (?, ?, ?, ?)',
+      [email.trim().toLowerCase(), otp, 'registration', expiresAt]
+    );
+
+    console.log(`\n🔑 [REGISTRATION OTP] Generated for ${email}: ${otp} (10 min expiry)`);
+
+    // Dispatch real email via nodemailer
+    const emailResult = await sendOtpEmail(email.trim().toLowerCase(), otp, 'registration');
+
+    res.json({
+      message: `Verification code sent to ${email}.`,
+      otp, // Provided in development for convenience
+      previewUrl: emailResult?.previewUrl || null,
+      expiresIn: '10 minutes'
+    });
+  } catch (err) {
+    console.error('RequestRegisterOtp error:', err);
+    res.status(500).json({ error: 'Failed to send registration OTP.' });
+  }
+}
+
+// Verify OTP and complete account creation
+export async function verifyRegisterOtp(req, res) {
+  try {
+    const { name, email, password, otp, avatar } = req.body;
+
+    if (!name || !email || !password || !otp) {
+      return res.status(400).json({ error: 'All fields including the verification OTP are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Verify OTP record
+    const record = queryOne(
+      "SELECT * FROM otps WHERE email = ? AND type = 'registration' ORDER BY id DESC LIMIT 1",
+      [cleanEmail]
+    );
+
+    if (!record) {
+      return res.status(400).json({ error: 'No active verification code found. Please request a new code.' });
+    }
+
+    if (Date.now() > record.expires_at) {
+      execute('DELETE FROM otps WHERE email = ?', [cleanEmail]);
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (record.otp.trim() !== otp.trim()) {
+      return res.status(400).json({ error: 'Invalid verification code. Please check your email and try again.' });
+    }
+
+    // Check existing email one more time
+    const existing = queryOne('SELECT id FROM users WHERE email = ?', [cleanEmail]);
+    if (existing) {
+      return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
+
+    // Create user
+    const userAvatar = avatar || '🧑‍🍳';
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const result = execute(
+      'INSERT INTO users (name, email, password, avatar) VALUES (?, ?, ?, ?)',
+      [name.trim(), cleanEmail, hashedPassword, userAvatar]
+    );
+
+    // Delete used OTP
+    execute('DELETE FROM otps WHERE email = ?', [cleanEmail]);
+
+    const token = jwt.sign({ userId: result.lastInsertRowid }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(201).json({
+      message: 'Account verified and created successfully!',
+      token,
+      user: { id: result.lastInsertRowid, name: name.trim(), email: cleanEmail, avatar: userAvatar }
+    });
+  } catch (err) {
+    console.error('VerifyRegisterOtp error:', err);
+    res.status(500).json({ error: 'Failed to complete registration.' });
+  }
+}
 
 export function register(req, res) {
   try {
@@ -104,14 +211,15 @@ export function updateProfile(req, res) {
   }
 }
 
-export function requestOtp(req, res) {
+export async function requestOtp(req, res) {
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: 'Email is required.' });
     }
 
-    const user = queryOne('SELECT id, name, email FROM users WHERE email = ?', [email]);
+    const cleanEmail = email.trim().toLowerCase();
+    const user = queryOne('SELECT id, name, email FROM users WHERE email = ?', [cleanEmail]);
     if (!user) {
       return res.status(404).json({ error: 'No user registered with this email address.' });
     }
@@ -121,19 +229,23 @@ export function requestOtp(req, res) {
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
     // Store in otps table
-    execute('DELETE FROM otps WHERE email = ?', [email]);
-    execute('INSERT INTO otps (email, otp, expires_at) VALUES (?, ?, ?)', [email, otp, expiresAt]);
+    execute('DELETE FROM otps WHERE email = ?', [cleanEmail]);
+    execute('INSERT INTO otps (email, otp, type, expires_at) VALUES (?, ?, ?, ?)', [cleanEmail, otp, 'password_reset', expiresAt]);
 
-    console.log(`\n🔑 [OTP AUTHENTICATION] Generated OTP for ${email}: ${otp} (Valid for 10 mins)\n`);
+    console.log(`\n🔑 [PASSWORD RESET OTP] Generated for ${cleanEmail}: ${otp} (10 min expiry)`);
+
+    // Dispatch real email via nodemailer
+    const emailResult = await sendOtpEmail(cleanEmail, otp, 'password_reset');
 
     res.json({
-      message: `OTP sent successfully to ${email}.`,
-      otp, // Provided in response for easy testing
+      message: `Password reset code sent to ${cleanEmail}.`,
+      otp, // Provided in development for convenience
+      previewUrl: emailResult?.previewUrl || null,
       expiresIn: '10 minutes'
     });
   } catch (err) {
     console.error('RequestOtp error:', err);
-    res.status(500).json({ error: 'Failed to generate OTP.' });
+    res.status(500).json({ error: 'Failed to send OTP email.' });
   }
 }
 
@@ -149,13 +261,17 @@ export function verifyOtpAndChangePassword(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
-    const record = queryOne('SELECT * FROM otps WHERE email = ? ORDER BY id DESC LIMIT 1', [email]);
+    const cleanEmail = email.trim().toLowerCase();
+    const record = queryOne(
+      "SELECT * FROM otps WHERE email = ? AND (type = 'password_reset' OR type IS NULL) ORDER BY id DESC LIMIT 1",
+      [cleanEmail]
+    );
     if (!record) {
       return res.status(400).json({ error: 'No active OTP found. Please request a new one.' });
     }
 
     if (Date.now() > record.expires_at) {
-      execute('DELETE FROM otps WHERE email = ?', [email]);
+      execute('DELETE FROM otps WHERE email = ?', [cleanEmail]);
       return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
 
@@ -165,10 +281,10 @@ export function verifyOtpAndChangePassword(req, res) {
 
     // Hash and update user password
     const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    execute('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, email]);
+    execute('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, cleanEmail]);
 
     // Clean up used OTP
-    execute('DELETE FROM otps WHERE email = ?', [email]);
+    execute('DELETE FROM otps WHERE email = ?', [cleanEmail]);
 
     res.json({ message: 'Password changed successfully! You can now log in with your new password.' });
   } catch (err) {

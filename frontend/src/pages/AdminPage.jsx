@@ -34,6 +34,21 @@ export default function AdminPage() {
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [savingCredentials, setSavingCredentials] = useState(false);
 
+  // Add Product State
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    category: 'vegetables',
+    price: '',
+    old_price: '',
+    unit: '1 kg',
+    emoji: '🥦',
+    stock: 50,
+    status: 'available',
+    description: ''
+  });
+
   const [toast, setToast] = useState(null);
 
   const fetchDashboardData = async () => {
@@ -51,6 +66,57 @@ export default function AdminPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!newProduct.name || !newProduct.price) {
+      setToast({ type: 'error', message: 'Product name and price are required' });
+      return;
+    }
+    try {
+      setAddingProduct(true);
+      const res = await api.adminAddProduct(newProduct);
+      setToast({ type: 'success', message: `Product "${res.product.name}" added successfully!` });
+      setIsAddProductOpen(false);
+      setNewProduct({
+        name: '',
+        category: 'vegetables',
+        price: '',
+        old_price: '',
+        unit: '1 kg',
+        emoji: '🥦',
+        stock: 50,
+        status: 'available',
+        description: ''
+      });
+      await fetchDashboardData();
+    } catch (err) {
+      setToast({ type: 'error', message: err.message || 'Failed to add product.' });
+    } finally {
+      setAddingProduct(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}" from the store catalog?`)) return;
+    try {
+      await api.adminDeleteProduct(id);
+      setToast({ type: 'success', message: `Product "${name}" deleted.` });
+      await fetchDashboardData();
+    } catch (err) {
+      setToast({ type: 'error', message: err.message || 'Failed to delete product.' });
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await api.adminUpdateOrderStatus(orderId, newStatus);
+      setToast({ type: 'success', message: `Order #${orderId} marked as ${newStatus}.` });
+      await fetchDashboardData();
+    } catch (err) {
+      setToast({ type: 'error', message: err.message || 'Failed to update order status.' });
     }
   };
 
@@ -208,6 +274,15 @@ export default function AdminPage() {
                     required
                   />
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginBottom: '12px' }}
+                  onClick={() => { setAdminUsername('admin'); setAdminPassword('admin123'); }}
+                >
+                  ⚡ Autofill Default Admin Credentials
+                </button>
 
                 <button
                   type="submit"
@@ -408,6 +483,20 @@ export default function AdminPage() {
         {/* Tab: Inventory & Stock Management */}
         {activeTab === 'inventory' && (
           <div className="admin-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Product Inventory ({filteredProducts.length} items)</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>Live catalog: Add products, update stock/pricing, or remove items.</p>
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsAddProductOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                id="admin-add-product-btn"
+              >
+                <span>➕</span> Add New Product
+              </button>
+            </div>
             <div className="table-responsive">
               <table className="admin-table">
                 <thead>
@@ -418,7 +507,7 @@ export default function AdminPage() {
                     <th>Unit</th>
                     <th>Stock Count</th>
                     <th>Status</th>
-                    <th>Manage Stock</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -459,12 +548,22 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td>
-                          <button
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => handleStartEditStock(p)}
-                          >
-                            ✏️ Edit Stock / Status
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              onClick={() => handleStartEditStock(p)}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '4px 8px' }}
+                              onClick={() => handleDeleteProduct(p.id, p.name)}
+                              title="Delete Product"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -555,9 +654,26 @@ export default function AdminPage() {
                       </td>
                       <td><span className="payment-badge">{o.payment_method || 'Card'}</span></td>
                       <td>
-                        <span className={`status-pill status-${(o.status || 'pending').toLowerCase()}`}>
-                          {o.status || 'confirmed'}
-                        </span>
+                        <select
+                          className="input-field"
+                          style={{ 
+                            padding: '4px 8px', 
+                            fontSize: '12px', 
+                            width: 'auto', 
+                            borderRadius: '6px', 
+                            fontWeight: '600',
+                            backgroundColor: o.status === 'delivered' ? 'rgba(34, 197, 94, 0.15)' : o.status === 'shipped' ? 'rgba(59, 130, 246, 0.15)' : o.status === 'cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                            color: o.status === 'delivered' ? '#22c55e' : o.status === 'shipped' ? '#3b82f6' : o.status === 'cancelled' ? '#ef4444' : '#eab308'
+                          }}
+                          value={(o.status || 'pending').toLowerCase()}
+                          onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+                        >
+                          <option value="pending" style={{ color: '#000' }}>🟡 Pending</option>
+                          <option value="confirmed" style={{ color: '#000' }}>🔵 Confirmed</option>
+                          <option value="shipped" style={{ color: '#000' }}>🚚 Shipped</option>
+                          <option value="delivered" style={{ color: '#000' }}>✅ Delivered</option>
+                          <option value="cancelled" style={{ color: '#000' }}>❌ Cancelled</option>
+                        </select>
                       </td>
                       <td>
                         <button
@@ -865,6 +981,163 @@ export default function AdminPage() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Product Modal */}
+        {isAddProductOpen && (
+          <div className="modal-backdrop" onClick={() => setIsAddProductOpen(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+              <div className="modal-header">
+                <h3>➕ Add New Product to Catalog</h3>
+                <button className="modal-close" onClick={() => setIsAddProductOpen(false)}>✕</button>
+              </div>
+
+              <form onSubmit={handleAddProduct}>
+                <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                  <div className="input-group">
+                    <label>Product Name *</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Organic Avocados"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="input-group">
+                      <label>Category *</label>
+                      <select
+                        className="input-field"
+                        value={newProduct.category}
+                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                        required
+                      >
+                        <option value="vegetables">🥦 Vegetables</option>
+                        <option value="fruits">🍎 Fruits</option>
+                        <option value="dairy">🥛 Dairy</option>
+                        <option value="bakery">🍞 Bakery</option>
+                        <option value="snacks">🍪 Snacks</option>
+                        <option value="beverages">🧃 Beverages</option>
+                      </select>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Unit (Weight/Vol) *</label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="e.g. 1 kg or 500 g"
+                        value={newProduct.unit}
+                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="input-group">
+                      <label>Selling Price (₹) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input-field"
+                        placeholder="e.g. 120"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <label>Original MRP (₹, optional)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input-field"
+                        placeholder="e.g. 150"
+                        value={newProduct.old_price}
+                        onChange={(e) => setNewProduct({ ...newProduct, old_price: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Icon Emoji</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="input-field"
+                        style={{ width: '70px', fontSize: '20px', textAlign: 'center' }}
+                        value={newProduct.emoji}
+                        onChange={(e) => setNewProduct({ ...newProduct, emoji: e.target.value })}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {['🍎', '🥦', '🥛', '🍞', '🍪', '🧃', '🥕', '🍓', '🥑', '🍋'].map((em) => (
+                          <button
+                            key={em}
+                            type="button"
+                            onClick={() => setNewProduct({ ...newProduct, emoji: em })}
+                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', padding: '4px 6px', fontSize: '16px' }}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="input-group">
+                      <label>Stock Count</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        placeholder="50"
+                        value={newProduct.stock}
+                        onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <label>Status</label>
+                      <select
+                        className="input-field"
+                        value={newProduct.status}
+                        onChange={(e) => setNewProduct({ ...newProduct, status: e.target.value })}
+                      >
+                        <option value="available">Available</option>
+                        <option value="coming_soon">Coming Soon</option>
+                        <option value="sold_out">Sold Out</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Product Description</label>
+                    <textarea
+                      className="input-field"
+                      rows={2}
+                      placeholder="Short description of origin, freshness, or ingredients..."
+                      value={newProduct.description}
+                      onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button type="submit" className="btn btn-primary" disabled={addingProduct}>
+                    {addingProduct ? '⟳ Adding Product...' : 'Add to Catalog 🚀'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsAddProductOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -57,6 +57,8 @@ async function adminRequest(endpoint, options = {}) {
 export const api = {
   // Auth
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  requestRegisterOtp: (data) => request('/auth/register-otp', { method: 'POST', body: JSON.stringify(data) }),
+  verifyRegisterOtp: (data) => request('/auth/verify-register-otp', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => request('/auth/me'),
   updateProfile: (data) => request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
@@ -97,4 +99,7 @@ export const api = {
   getAdminSettings: () => adminRequest('/admin/settings'),
   updateAdminSettings: (data) => adminRequest('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
   updateProductStock: (id, data) => adminRequest(`/admin/products/${id}/stock`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminAddProduct: (data) => adminRequest('/admin/products', { method: 'POST', body: JSON.stringify(data) }),
+  adminDeleteProduct: (id) => adminRequest(`/admin/products/${id}`, { method: 'DELETE' }),
+  adminUpdateOrderStatus: (id, status) => adminRequest(`/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 };

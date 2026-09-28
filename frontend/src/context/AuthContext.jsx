@@ -34,6 +34,14 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const verifyRegister = async (name, email, password, otp) => {
+    const data = await api.verifyRegisterOtp({ name, email, password, otp });
+    localStorage.setItem('grocery_token', data.token);
+    localStorage.setItem('grocery_user', JSON.stringify(data.user));
+    setUser(data.user);
+    return data;
+  };
+
   const logout = () => {
     localStorage.removeItem('grocery_token');
     localStorage.removeItem('grocery_user');
@@ -49,7 +57,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, register, verifyRegister, logout, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
