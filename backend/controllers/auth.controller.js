@@ -40,7 +40,7 @@ export async function requestRegisterOtp(req, res) {
     try {
       const emailResult = await Promise.race([
         sendOtpEmail(email.trim().toLowerCase(), otp, 'registration'),
-        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 3500))
+        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 12000))
       ]);
       emailDelivered = !!emailResult?.success;
     } catch (e) {
@@ -248,7 +248,7 @@ export async function requestOtp(req, res) {
     try {
       const emailResult = await Promise.race([
         sendOtpEmail(cleanEmail, otp, 'password_reset'),
-        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 3500))
+        new Promise((resolve) => setTimeout(() => resolve({ success: false, timeout: true }), 12000))
       ]);
       emailDelivered = !!emailResult?.success;
     } catch (e) {

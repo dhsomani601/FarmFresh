@@ -22,9 +22,9 @@ export async function getMailerTransporter() {
           user: smtpUser,
           pass: smtpPass
         },
-        connectionTimeout: 4000,
-        greetingTimeout: 3000,
-        socketTimeout: 5000
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
       });
       console.log(`📧 [Mailer] Configured SMTP transporter for ${smtpUser} via ${smtpHost}:${smtpPort}`);
       return transporter;
