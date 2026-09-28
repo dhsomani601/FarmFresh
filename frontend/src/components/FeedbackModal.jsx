@@ -65,7 +65,6 @@ export default function FeedbackModal() {
         title="Share your feedback & suggestions"
       >
         <span className="floating-feedback-icon">💬</span>
-        <span className="floating-feedback-text">Feedback</span>
       </button>
 
       {/* Modal Backdrop & Dialog */}

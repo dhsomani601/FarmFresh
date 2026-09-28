@@ -36,9 +36,6 @@ export default function Footer() {
               <li>
                 <Link to="/orders" className="footer-link">📦 Track Orders</Link>
               </li>
-              <li>
-                <Link to="/admin" className="footer-link">🔒 Admin Portal</Link>
-              </li>
             </ul>
           </div>
 
@@ -80,8 +77,6 @@ export default function Footer() {
             <Link to="/policy">Privacy Policy</Link>
             <span>•</span>
             <Link to="/customer-care">24x7 Customer Care</Link>
-            <span>•</span>
-            <Link to="/admin">Admin Portal 🔒</Link>
           </div>
         </div>
       </div>

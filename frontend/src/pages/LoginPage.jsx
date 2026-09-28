@@ -12,8 +12,6 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [serverOtp, setServerOtp] = useState(null);
-  const [emailDelivered, setEmailDelivered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [toast, setToast] = useState(null);
@@ -73,18 +71,12 @@ export default function LoginPage() {
     try {
       setLoading(true);
       const data = await api.requestOtp(resetEmail);
-      setServerOtp(data.otp || null);
-      setEmailDelivered(!!data.emailDelivered);
       setTimeLeft(600);
       setResendCooldown(30);
       setOtp('');
       setMode('forgot_verify');
 
-      if (data.emailDelivered) {
-        setToast({ type: 'success', message: `✉️ Reset code sent to ${resetEmail}! Please check your email.` });
-      } else {
-        setToast({ type: 'info', message: `🔑 Password reset code generated! (Valid for 10 minutes)` });
-      }
+      setToast({ type: 'success', message: data.message || `✉️ Reset code sent to ${resetEmail}! Please check your email.` });
     } catch (err) {
       setToast({ type: 'error', message: err.message || 'Failed to send reset code.' });
     } finally {
@@ -98,16 +90,12 @@ export default function LoginPage() {
     try {
       setResending(true);
       const data = await api.requestOtp(resetEmail);
-      setServerOtp(data.otp || null);
-      setEmailDelivered(!!data.emailDelivered);
       setTimeLeft(600);
       setResendCooldown(30);
       setOtp('');
       setToast({
         type: 'success',
-        message: data.emailDelivered
-          ? `Fresh reset code sent to ${resetEmail}!`
-          : `Fresh reset code generated!`
+        message: data.message || `Fresh reset code sent to ${resetEmail}!`
       });
     } catch (err) {
       setToast({ type: 'error', message: err.message });
@@ -146,13 +134,6 @@ export default function LoginPage() {
       setToast({ type: 'error', message: err.message || 'Failed to update password.' });
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Quick fill test code helper
-  const handleQuickFill = () => {
-    if (serverOtp) {
-      setOtp(serverOtp);
     }
   };
 
@@ -294,33 +275,10 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {/* Email Delivery or Test Code Banner */}
-                {emailDelivered ? (
-                  <div style={{ padding: '8px 12px', background: 'rgba(34, 197, 94, 0.08)', borderRadius: '8px', fontSize: '12px', textAlign: 'center', color: '#22c55e', marginBottom: '14px' }}>
-                    📬 Real email sent to <strong>{resetEmail}</strong>. Check inbox or spam folder.
-                  </div>
-                ) : serverOtp ? (
-                  <div style={{
-                    padding: '10px 12px',
-                    background: 'rgba(255, 122, 0, 0.12)',
-                    border: '1px solid rgba(255, 122, 0, 0.3)',
-                    borderRadius: '10px',
-                    textAlign: 'center',
-                    marginBottom: '14px'
-                  }}>
-                    <div style={{ fontSize: '12px', color: '#ff7a00', marginBottom: '6px' }}>
-                      🔑 Code: <strong style={{ fontSize: '16px', letterSpacing: '2px' }}>{serverOtp}</strong>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleQuickFill}
-                      className="btn btn-sm btn-secondary"
-                      style={{ fontSize: '12px', padding: '4px 10px' }}
-                    >
-                      ⚡ Auto-Fill Code
-                    </button>
-                  </div>
-                ) : null}
+                <div style={{ padding: '10px 14px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '10px', fontSize: '13px', textAlign: 'center', color: '#86efac', marginBottom: '14px' }}>
+                  📬 A 6-digit reset code has been dispatched to <strong>{resetEmail}</strong>.<br />
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Please check your inbox and spam folder.</span>
+                </div>
 
                 <div className="input-group">
                   <label>6-Digit Verification Code</label>

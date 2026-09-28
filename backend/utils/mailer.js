@@ -96,6 +96,65 @@ export async function sendOtpEmail(toEmail, otp, purpose = 'registration') {
     </html>
   `;
 
+  // 1. Try Resend API if RESEND_API_KEY is configured (HTTPS port 443, reliable delivery)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM || 'FreshMart <onboarding@resend.dev>',
+          to: [toEmail],
+          subject,
+          html
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`\n📨 [REAL EMAIL SENT via Resend] To: ${toEmail} | Id: ${data.id}`);
+        return { success: true };
+      } else {
+        console.error('Resend API returned error:', data);
+      }
+    } catch (e) {
+      console.error('Resend dispatch failed:', e.message);
+    }
+  }
+
+  // 2. Try Brevo API if BREVO_API_KEY is configured (HTTPS port 443)
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  if (brevoApiKey) {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'FreshMart Organics', email: process.env.BREVO_FROM || 'no-reply@freshmart.in' },
+          to: [{ email: toEmail }],
+          subject,
+          htmlContent: html
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`\n📨 [REAL EMAIL SENT via Brevo] To: ${toEmail} | MessageId: ${data.messageId}`);
+        return { success: true };
+      } else {
+        console.error('Brevo API returned error:', data);
+      }
+    } catch (e) {
+      console.error('Brevo dispatch failed:', e.message);
+    }
+  }
+
+  // 3. Try standard SMTP transporter if configured
   try {
     const mailer = await getMailerTransporter();
     if (mailer) {
@@ -108,15 +167,21 @@ export async function sendOtpEmail(toEmail, otp, purpose = 'registration') {
         text: `Your FreshMart OTP code is: ${otp}. It will expire in 10 minutes.`
       });
 
-      console.log(`\n📨 [REAL EMAIL SENT] To: ${toEmail} | MessageId: ${info.messageId}`);
+      console.log(`\n📨 [REAL EMAIL SENT via SMTP] To: ${toEmail} | MessageId: ${info.messageId}`);
       return { success: true };
-    } else {
-      console.log(`\n🔑 [EMAIL OTP READY] Recipient: ${toEmail} | Code: ${otp} (Valid 10 mins)`);
-      console.log(`💡 [Mailer Tip] To deliver directly to external mailboxes, set SMTP_USER and SMTP_PASS in backend/.env\n`);
-      return { success: false, notConfigured: true };
     }
   } catch (err) {
-    console.error('Failed to send email:', err.message);
-    return { success: false, error: err.message };
+    console.error('SMTP email sending failed:', err.message);
   }
+
+  // 4. If no mail service is configured, log to server terminal
+  console.log(`\n==============================================================`);
+  console.log(`📧 [OTP DISPATCH - REAL EMAIL PENDING SMTP/API CONFIG]`);
+  console.log(`Recipient: ${toEmail}`);
+  console.log(`Purpose:   ${purpose}`);
+  console.log(`🔑 6-Digit Code: [ ${otp} ]`);
+  console.log(`⏱️ Expiry: 10 Minutes`);
+  console.log(`💡 Setup Tip: Add RESEND_API_KEY or SMTP_USER/SMTP_PASS in backend/.env for instant mailbox delivery`);
+  console.log(`==============================================================\n`);
+  return { success: false, notConfigured: true };
 }

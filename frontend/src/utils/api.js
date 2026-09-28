@@ -16,7 +16,7 @@ async function request(endpoint, options = {}) {
   const data = await res.json();
 
   if (!res.ok) {
-    if (res.status === 401) {
+    if (res.status === 401 && !endpoint.startsWith('/admin') && !window.location.pathname.startsWith('/admin')) {
       localStorage.removeItem('grocery_token');
       localStorage.removeItem('grocery_user');
       if (!window.location.pathname.includes('/login')) {

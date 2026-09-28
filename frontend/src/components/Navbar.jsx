@@ -216,9 +216,6 @@ export default function Navbar() {
           <Link to="/customer-care" className={`nav-link mobile-only-link ${location.pathname === '/customer-care' ? 'active' : ''}`}>
             📞 Support
           </Link>
-          <Link to="/admin" className={`nav-link mobile-only-link ${location.pathname === '/admin' ? 'active' : ''}`}>
-            🔒 Admin Portal
-          </Link>
         </div>
 
         {/* Actions (Cart & User) */}
@@ -253,7 +250,6 @@ export default function Navbar() {
                   <Link to="/orders" className="dropdown-item">📦 My Orders</Link>
                   <Link to="/profile" className="dropdown-item">👤 Profile & Settings</Link>
                   <Link to="/customer-care" className="dropdown-item">📞 Help & Support</Link>
-                  <Link to="/admin" className="dropdown-item">🔒 Admin Portal</Link>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item danger" onClick={handleLogout}>🚪 Logout</button>
                 </div>

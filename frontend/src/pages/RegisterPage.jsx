@@ -11,8 +11,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [serverOtp, setServerOtp] = useState(null);
-  const [emailDelivered, setEmailDelivered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [toast, setToast] = useState(null);
@@ -61,23 +59,14 @@ export default function RegisterPage() {
       setLoading(true);
       const data = await api.requestRegisterOtp({ name, email, password });
       
-      setServerOtp(data.otp || null);
-      setEmailDelivered(!!data.emailDelivered);
       setTimeLeft(600);
       setResendCooldown(30);
       setStep(2);
 
-      if (data.emailDelivered) {
-        setToast({
-          type: 'success',
-          message: `✉️ Verification code sent to ${email}! Please check your email inbox.`
-        });
-      } else {
-        setToast({
-          type: 'info',
-          message: `🔑 Verification code generated! (Valid for 10 minutes)`
-        });
-      }
+      setToast({
+        type: 'success',
+        message: data.message || `✉️ Verification code sent to ${email}! Please check your email inbox.`
+      });
     } catch (err) {
       setToast({ type: 'error', message: err.message || 'Failed to send verification code.' });
     } finally {
@@ -122,30 +111,18 @@ export default function RegisterPage() {
     }
   };
 
-  // Quick fill test code helper
-  const handleQuickFill = () => {
-    if (serverOtp) {
-      setOtp(serverOtp);
-      triggerVerify(serverOtp);
-    }
-  };
-
   // Resend OTP
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
     try {
       setResending(true);
       const data = await api.requestRegisterOtp({ name, email, password });
-      setServerOtp(data.otp || null);
-      setEmailDelivered(!!data.emailDelivered);
       setTimeLeft(600);
       setResendCooldown(30);
       setOtp('');
       setToast({
         type: 'success',
-        message: data.emailDelivered
-          ? `Fresh verification code sent to ${email}!`
-          : `Fresh verification code generated!`
+        message: data.message || `Fresh verification code sent to ${email}!`
       });
     } catch (err) {
       setToast({ type: 'error', message: err.message });
@@ -250,33 +227,10 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              {/* Email Delivery Status or Demo Code Banner */}
-              {emailDelivered ? (
-                <div style={{ padding: '8px 12px', background: 'rgba(34, 197, 94, 0.08)', borderRadius: '8px', fontSize: '12px', textAlign: 'center', color: '#22c55e', marginBottom: '14px' }}>
-                  📬 Real email sent to <strong>{email}</strong>. Check inbox or spam folder.
-                </div>
-              ) : serverOtp ? (
-                <div style={{
-                  padding: '10px 12px',
-                  background: 'rgba(255, 122, 0, 0.12)',
-                  border: '1px solid rgba(255, 122, 0, 0.3)',
-                  borderRadius: '10px',
-                  textAlign: 'center',
-                  marginBottom: '14px'
-                }}>
-                  <div style={{ fontSize: '12px', color: '#ff7a00', marginBottom: '6px' }}>
-                    🔑 Code: <strong style={{ fontSize: '16px', letterSpacing: '2px' }}>{serverOtp}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleQuickFill}
-                    className="btn btn-sm btn-secondary"
-                    style={{ fontSize: '12px', padding: '4px 10px' }}
-                  >
-                    ⚡ Auto-Fill & Verify Code
-                  </button>
-                </div>
-              ) : null}
+              <div style={{ padding: '10px 14px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '10px', fontSize: '13px', textAlign: 'center', color: '#86efac', marginBottom: '16px' }}>
+                📬 A 6-digit verification code has been dispatched to <strong>{email}</strong>.<br />
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Please check your inbox and spam folder.</span>
+              </div>
 
               <div className="input-group">
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -48,11 +48,8 @@ export async function requestRegisterOtp(req, res) {
     }
 
     res.json({
-      message: emailDelivered 
-        ? `Verification code sent to ${email}. Please check your email inbox!` 
-        : `Verification code generated for ${email}!`,
+      message: `A 6-digit verification code has been dispatched to ${email}.`,
       emailDelivered,
-      otp, // Always returned for instant fallback / local testing
       expiresIn: '10 minutes',
       expiresAt
     });
@@ -259,11 +256,8 @@ export async function requestOtp(req, res) {
     }
 
     res.json({
-      message: emailDelivered 
-        ? `Password reset code sent to ${cleanEmail}. Please check your email inbox!` 
-        : `Password reset code generated for ${cleanEmail}!`,
+      message: `A 6-digit password reset code has been dispatched to ${cleanEmail}.`,
       emailDelivered,
-      otp, // Always returned for instant fallback / local testing
       expiresIn: '10 minutes',
       expiresAt
     });
