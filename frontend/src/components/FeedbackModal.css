@@ -1,0 +1,166 @@
+/* Floating Feedback Button */
+.floating-feedback-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--gradient-btn);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px var(--accent-green-glow);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.floating-feedback-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 30px var(--accent-green-glow);
+}
+
+.floating-feedback-icon {
+  font-size: 1.2rem;
+}
+
+/* Modal Backdrop */
+.feedback-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+/* Modal Card */
+.feedback-modal-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 2rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.feedback-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.feedback-modal-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.feedback-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.feedback-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.feedback-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.modal-star-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.modal-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-stars-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.modal-star-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  filter: grayscale(100%) opacity(40%);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.modal-star-btn:hover,
+.modal-star-btn.filled {
+  filter: grayscale(0%) opacity(100%);
+  transform: scale(1.15);
+}
+
+.modal-star-label {
+  margin-left: 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.modal-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.modal-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .floating-feedback-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .feedback-modal-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .modal-two-col {
+    grid-template-columns: 1fr;
+  }
+}

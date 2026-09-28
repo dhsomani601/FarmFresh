@@ -1,0 +1,132 @@
+.orders-header {
+  text-align: center;
+  margin-bottom: 32px;
+  opacity: 0;
+}
+
+.orders-list {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-card {
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.order-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.order-header-row:hover {
+  background: rgba(148,163,184,0.04);
+}
+
+.order-id-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-id {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.order-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.order-meta-col {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.order-total {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent-green);
+}
+
+.order-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.expand-icon {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.order-details {
+  border-top: 1px solid var(--border-subtle);
+  padding: 20px 24px;
+}
+
+.order-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.order-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.order-item-emoji { font-size: 1.2rem; }
+.order-item-name {
+  flex: 1;
+  font-size: 0.9rem;
+}
+.order-item-qty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.order-item-price {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.order-address {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+}
+
+.address-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .order-meta-col {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .order-count { display: none; }
+}
