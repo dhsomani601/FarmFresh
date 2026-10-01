@@ -7,10 +7,15 @@ import { sendOtpEmail } from '../utils/mailer.js';
 // Send OTP to user's real email for registration
 export async function requestRegisterOtp(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ error: 'Name, email, phone number, and password are required.' });
+    }
+
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
+    if (cleanPhone.replace(/\D/g, '').length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
     }
 
     if (password.length < 6) {
@@ -62,10 +67,15 @@ export async function requestRegisterOtp(req, res) {
 // Verify OTP and complete account creation
 export async function verifyRegisterOtp(req, res) {
   try {
-    const { name, email, password, otp, avatar } = req.body;
+    const { name, email, password, phone, otp, avatar } = req.body;
 
-    if (!name || !email || !password || !otp) {
-      return res.status(400).json({ error: 'All fields including the verification OTP are required.' });
+    if (!name || !email || !password || !phone || !otp) {
+      return res.status(400).json({ error: 'All fields including phone number and verification OTP are required.' });
+    }
+
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
+    if (cleanPhone.replace(/\D/g, '').length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -99,8 +109,8 @@ export async function verifyRegisterOtp(req, res) {
     const userAvatar = avatar || '🧑‍🍳';
     const hashedPassword = bcrypt.hashSync(password, 10);
     const result = execute(
-      'INSERT INTO users (name, email, password, avatar) VALUES (?, ?, ?, ?)',
-      [name.trim(), cleanEmail, hashedPassword, userAvatar]
+      'INSERT INTO users (name, email, password, phone, avatar) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), cleanEmail, hashedPassword, cleanPhone, userAvatar]
     );
 
     // Delete used OTP
@@ -108,10 +118,18 @@ export async function verifyRegisterOtp(req, res) {
 
     const token = jwt.sign({ userId: result.lastInsertRowid }, JWT_SECRET, { expiresIn: '7d' });
 
+    // Set secure httpOnly cookie
+    res.cookie('grocery_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.status(201).json({
       message: 'Account verified and created successfully!',
       token,
-      user: { id: result.lastInsertRowid, name: name.trim(), email: cleanEmail, avatar: userAvatar }
+      user: { id: result.lastInsertRowid, name: name.trim(), email: cleanEmail, phone: cleanPhone, avatar: userAvatar }
     });
   } catch (err) {
     console.error('VerifyRegisterOtp error:', err);
@@ -121,31 +139,46 @@ export async function verifyRegisterOtp(req, res) {
 
 export function register(req, res) {
   try {
-    const { name, email, password, avatar } = req.body;
+    const { name, email, password, phone, avatar } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ error: 'Name, email, phone number, and password are required.' });
+    }
+
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
+    if (cleanPhone.replace(/\D/g, '').length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
 
-    const existing = queryOne('SELECT id FROM users WHERE email = ?', [email]);
+    const existing = queryOne('SELECT id FROM users WHERE email = ?', [email.trim().toLowerCase()]);
     if (existing) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
     const userAvatar = avatar || '🧑‍🍳';
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const result = execute('INSERT INTO users (name, email, password, avatar) VALUES (?, ?, ?, ?)', [name, email, hashedPassword, userAvatar]);
+    const result = execute(
+      'INSERT INTO users (name, email, password, phone, avatar) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), email.trim().toLowerCase(), hashedPassword, cleanPhone, userAvatar]
+    );
 
     const token = jwt.sign({ userId: result.lastInsertRowid }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.cookie('grocery_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     res.status(201).json({
       message: 'Account created successfully!',
       token,
-      user: { id: result.lastInsertRowid, name, email, avatar: userAvatar }
+      user: { id: result.lastInsertRowid, name: name.trim(), email: email.trim().toLowerCase(), phone: cleanPhone, avatar: userAvatar }
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -161,7 +194,7 @@ export function login(req, res) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    const user = queryOne('SELECT * FROM users WHERE email = ?', [email]);
+    const user = queryOne('SELECT * FROM users WHERE email = ?', [email.trim().toLowerCase()]);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
@@ -173,6 +206,13 @@ export function login(req, res) {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
+    res.cookie('grocery_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.json({
       message: 'Login successful!',
       token,
@@ -181,6 +221,19 @@ export function login(req, res) {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed.' });
+  }
+}
+
+export function logout(req, res) {
+  try {
+    res.clearCookie('grocery_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
+    res.json({ message: 'Logged out successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to logout user.' });
   }
 }
 

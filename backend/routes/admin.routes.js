@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   adminLogin,
+  adminLogout,
   adminAuth,
   getAdminSettings,
   updateAdminSettings,
@@ -14,8 +15,9 @@ import {
 
 const router = Router();
 
-// Public admin login
+// Public admin login & logout
 router.post('/login', adminLogin);
+router.post('/logout', adminLogout);
 
 // Protected admin routes
 router.use(adminAuth);

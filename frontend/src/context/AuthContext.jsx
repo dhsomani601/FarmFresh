@@ -8,41 +8,55 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('grocery_token');
-    const savedUser = localStorage.getItem('grocery_user');
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch { /* ignore */ }
+    async function initAuth() {
+      const savedUser = localStorage.getItem('grocery_user');
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch { /* ignore */ }
+      } else {
+        // Attempt session rehydration via httpOnly cookie
+        try {
+          const res = await api.getMe();
+          if (res?.user) {
+            localStorage.setItem('grocery_user', JSON.stringify(res.user));
+            setUser(res.user);
+          }
+        } catch {
+          // No active cookie session
+        }
+      }
+      setLoading(false);
     }
-    setLoading(false);
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
     const data = await api.login({ email, password });
-    localStorage.setItem('grocery_token', data.token);
+    if (data.token) localStorage.setItem('grocery_token', data.token);
     localStorage.setItem('grocery_user', JSON.stringify(data.user));
     setUser(data.user);
     return data;
   };
 
-  const register = async (name, email, password) => {
-    const data = await api.register({ name, email, password });
-    localStorage.setItem('grocery_token', data.token);
+  const register = async (name, email, password, phone) => {
+    const data = await api.register({ name, email, password, phone });
+    if (data.token) localStorage.setItem('grocery_token', data.token);
     localStorage.setItem('grocery_user', JSON.stringify(data.user));
     setUser(data.user);
     return data;
   };
 
-  const verifyRegister = async (name, email, password, otp) => {
-    const data = await api.verifyRegisterOtp({ name, email, password, otp });
-    localStorage.setItem('grocery_token', data.token);
+  const verifyRegister = async (name, email, password, phone, otp) => {
+    const data = await api.verifyRegisterOtp({ name, email, password, phone, otp });
+    if (data.token) localStorage.setItem('grocery_token', data.token);
     localStorage.setItem('grocery_user', JSON.stringify(data.user));
     setUser(data.user);
     return data;
   };
 
   const logout = () => {
+    api.logout();
     localStorage.removeItem('grocery_token');
     localStorage.removeItem('grocery_user');
     setUser(null);

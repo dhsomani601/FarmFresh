@@ -3,8 +3,10 @@ import { queryAll, queryOne, execute } from '../db/database.js';
 import { JWT_SECRET } from '../middleware/auth.js';
 
 export function adminAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = 
+    req.cookies?.grocery_admin_token || 
+    req.cookies?.admin_token || 
+    (req.headers.authorization && req.headers.authorization.split(' ')[1]);
 
   if (!token) {
     return res.status(401).json({ error: 'Admin authentication required.' });
@@ -41,6 +43,15 @@ export function adminLogin(req, res) {
     }
 
     const token = jwt.sign({ role: 'admin', username: currentUsername }, JWT_SECRET, { expiresIn: '1d' });
+
+    // Set secure httpOnly cookie for admin
+    res.cookie('grocery_admin_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    });
+
     res.json({
       message: 'Admin authentication successful!',
       token,
@@ -49,6 +60,19 @@ export function adminLogin(req, res) {
   } catch (err) {
     console.error('Admin login error:', err);
     res.status(500).json({ error: 'Admin login failed.' });
+  }
+}
+
+export function adminLogout(req, res) {
+  try {
+    res.clearCookie('grocery_admin_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
+    res.json({ message: 'Admin logged out successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to logout admin.' });
   }
 }
 

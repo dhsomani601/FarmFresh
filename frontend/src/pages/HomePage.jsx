@@ -279,7 +279,7 @@ export default function HomePage() {
             {/* Hero Quick CTAs */}
             <div className="hero-cta-wrapper">
               <Link to="/products" className="btn btn-primary btn-lg gourmet-cta-btn">
-                🛍️ Shop 29+ Farm Groceries
+                🛍️ Shop Farm Groceries
               </Link>
               <a href="#bento-grid" className="btn btn-secondary btn-lg gourmet-sec-btn">
                 Explore Farm Quality ↓
@@ -648,7 +648,7 @@ export default function HomePage() {
 
           <div className="compare-bottom-cta">
             <Link to="/products" className="btn btn-secondary btn-lg">
-              Explore Complete 29+ Grocery Catalog →
+              Explore Complete Farm Groceries Catalog →
             </Link>
           </div>
         </div>
