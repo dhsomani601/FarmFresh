@@ -10,6 +10,7 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => !!localStorage.getItem('grocery_admin_token'));
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -30,8 +31,15 @@ export default function Navbar() {
         setShowSuggestions(false);
       }
     }
+    const checkAdmin = () => setIsAdminLoggedIn(!!localStorage.getItem('grocery_admin_token'));
+    window.addEventListener('adminAuthChange', checkAdmin);
+    window.addEventListener('storage', checkAdmin);
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('adminAuthChange', checkAdmin);
+      window.removeEventListener('storage', checkAdmin);
+    };
   }, []);
 
   useEffect(() => {
@@ -83,7 +91,17 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/logout-success?role=user');
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await api.adminLogout();
+    } catch { /* ignore */ }
+    localStorage.removeItem('grocery_admin_token');
+    setIsAdminLoggedIn(false);
+    window.dispatchEvent(new Event('adminAuthChange'));
+    navigate('/logout-success?role=admin');
   };
 
   const renderAvatar = () => {
@@ -124,7 +142,7 @@ export default function Navbar() {
             <input
               type="text"
               className="universal-search-input"
-              placeholder="Search 29+ fresh groceries, fruits, milk, bakery..."
+              placeholder="Search Farm Groceries, fruits, milk, bakery..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => {
@@ -216,10 +234,43 @@ export default function Navbar() {
           <Link to="/customer-care" className={`nav-link mobile-only-link ${location.pathname === '/customer-care' ? 'active' : ''}`}>
             📞 Support
           </Link>
+          {isAdminLoggedIn && (
+            <>
+              <Link to="/admin" className="nav-link mobile-only-link" style={{ color: '#ff7a00', fontWeight: '700' }}>
+                🛡️ Admin Dashboard
+              </Link>
+              <button 
+                type="button" 
+                className="nav-link mobile-only-link" 
+                style={{ color: '#ef4444', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '10px 14px', font: 'inherit', fontWeight: '700' }} 
+                onClick={handleAdminLogout}
+              >
+                🚪 Logout Admin
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Actions (Cart & User) */}
+        {/* Actions (Cart, Admin, & User) */}
         <div className="nav-actions">
+          {isAdminLoggedIn && (
+            <div className="admin-nav-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Link to="/admin" className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} title="Admin Control Portal">
+                🛡️ Admin
+              </Link>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                onClick={handleAdminLogout}
+                title="Logout Admin"
+                id="navbar-admin-logout-btn"
+              >
+                🚪 Logout
+              </button>
+            </div>
+          )}
+
           <Link to="/cart" className="cart-btn" id="cart-nav-btn">
             <span className="cart-icon">🛒</span>
             <span className="cart-text">Cart</span>

@@ -15,9 +15,6 @@ export default function Footer() {
             <p className="footer-bio">
               Farm-fresh groceries, organic produce, dairy, and daily essentials delivered to your doorstep in minutes. Serving freshness across India with zero delivery compromises.
             </p>
-            <div className="footer-currency-tag">
-              <span>🇮🇳 Indian Rupees (₹) Store</span>
-            </div>
           </div>
 
           {/* Col 2: Mandatory Pages */}

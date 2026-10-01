@@ -73,6 +73,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -81,6 +82,7 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -206,8 +208,8 @@ ul, ol {
 /* Glass card */
 .glass-card {
   background: var(--bg-glass);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
 }
@@ -341,6 +343,12 @@ ul, ol {
 }
 
 /* Responsive */
+@media (max-width: 960px) {
+  :root {
+    --nav-height: 118px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 16px;
@@ -349,5 +357,10 @@ ul, ol {
   .page-container {
     padding-top: calc(var(--nav-height) + 16px);
     padding-bottom: 32px;
+  }
+
+  /* Prevent auto-zoom on input focus in iOS Safari */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }

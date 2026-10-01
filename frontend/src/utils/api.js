@@ -4,6 +4,7 @@ async function request(endpoint, options = {}) {
   const token = localStorage.getItem('grocery_token');
   
   const config = {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -19,7 +20,7 @@ async function request(endpoint, options = {}) {
     if (res.status === 401 && !endpoint.startsWith('/admin') && !window.location.pathname.startsWith('/admin')) {
       localStorage.removeItem('grocery_token');
       localStorage.removeItem('grocery_user');
-      if (!window.location.pathname.includes('/login')) {
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/logout-success')) {
         window.location.href = '/login';
       }
     }
@@ -33,6 +34,7 @@ async function adminRequest(endpoint, options = {}) {
   const adminToken = localStorage.getItem('grocery_admin_token');
 
   const config = {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
@@ -60,6 +62,7 @@ export const api = {
   requestRegisterOtp: (data) => request('/auth/register-otp', { method: 'POST', body: JSON.stringify(data) }),
   verifyRegisterOtp: (data) => request('/auth/verify-register-otp', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => request('/auth/logout', { method: 'POST' }).catch(() => ({})),
   getMe: () => request('/auth/me'),
   updateProfile: (data) => request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
   requestOtp: (email) => request('/auth/request-otp', { method: 'POST', body: JSON.stringify({ email }) }),
@@ -94,6 +97,7 @@ export const api = {
 
   // Admin
   adminLogin: (credentials) => request('/admin/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  adminLogout: () => request('/admin/logout', { method: 'POST' }).catch(() => ({})),
   getAdminDashboard: () => adminRequest('/admin/dashboard'),
   getAdminOrderDetails: (id) => adminRequest(`/admin/orders/${id}`),
   getAdminSettings: () => adminRequest('/admin/settings'),

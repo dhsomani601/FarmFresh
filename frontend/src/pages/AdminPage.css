@@ -568,6 +568,7 @@
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -736,5 +737,83 @@
   line-height: 1.5;
   color: var(--text-secondary);
   word-break: break-word;
+}
+
+/* Responsive Mobile Admin Layout */
+@media (max-width: 900px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+  }
+
+  .admin-top-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .admin-top-actions .btn {
+    flex: 1;
+    min-width: 110px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.82rem;
+  }
+
+  .admin-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .admin-tab {
+    flex-shrink: 0;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.85rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
+  }
+
+  /* Horizontal scrolling for all wide admin tables */
+  .admin-table-container,
+  .admin-table-wrapper,
+  .table-responsive,
+  .admin-card {
+    overflow-x: auto;
+  }
+
+  .admin-table {
+    min-width: 620px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page {
+    padding-top: calc(var(--nav-height, 118px) + 1rem);
+  }
+
+  .admin-title {
+    font-size: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-login-card {
+    padding: 24px 16px;
+  }
 }
 

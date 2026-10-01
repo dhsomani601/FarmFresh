@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import Toast from '../components/Toast';
 import './AdminPage.css';
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('grocery_admin_token'));
   
   // Admin Login State
@@ -137,6 +139,7 @@ export default function AdminPage() {
       });
       localStorage.setItem('grocery_admin_token', res.token);
       setAdminToken(res.token);
+      window.dispatchEvent(new Event('adminAuthChange'));
       setToast({ type: 'success', message: 'Admin authentication successful!' });
     } catch (err) {
       setLoginError(err.message || 'Invalid admin credentials');
@@ -145,10 +148,15 @@ export default function AdminPage() {
     }
   };
 
-  const handleAdminLogout = () => {
+  const handleAdminLogout = async () => {
+    try {
+      await api.adminLogout();
+    } catch { /* ignore */ }
     localStorage.removeItem('grocery_admin_token');
     setAdminToken(null);
     setData({ stats: {}, users: [], orders: [], products: [] });
+    window.dispatchEvent(new Event('adminAuthChange'));
+    navigate('/logout-success?role=admin');
   };
 
   const handleViewOrder = async (order) => {
@@ -352,10 +360,11 @@ export default function AdminPage() {
               🔑 Credentials
             </button>
             <button
-              className="btn btn-danger-outline logout-admin-btn"
+              className="btn btn-danger logout-admin-btn"
               onClick={handleAdminLogout}
+              id="admin-logout-btn"
             >
-              🚪 Exit Admin
+              🚪 Logout Admin
             </button>
           </div>
         </div>

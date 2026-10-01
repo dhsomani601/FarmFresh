@@ -40,7 +40,9 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (isAuthenticated) fetchCart();
-  }, [isAuthenticated, fetchCart]);
+    if (user?.phone && !phone) setPhone(user.phone);
+    if (user?.address && !address) setAddress(user.address);
+  }, [isAuthenticated, fetchCart, user]);
 
   if (!isAuthenticated) {
     navigate('/login');
@@ -298,7 +300,7 @@ export default function CheckoutPage() {
                     type="tel"
                     className="input-field"
                     id="checkout-phone"
-                    placeholder="e.g. +1 555-0192"
+                    placeholder="e.g. +91 98765 43210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
@@ -312,7 +314,7 @@ export default function CheckoutPage() {
                   type="text"
                   className="input-field"
                   id="checkout-address"
-                  placeholder="Apartment, suite, street address"
+                  placeholder="e.g. Flat 402, Shanti Heights, MG Road, Koramangala"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   required
@@ -326,18 +328,18 @@ export default function CheckoutPage() {
                     type="text"
                     className="input-field"
                     id="checkout-city"
-                    placeholder="e.g. New York / San Francisco"
+                    placeholder="e.g. Mumbai, Bengaluru, Delhi"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                   />
                 </div>
                 <div className="input-group">
-                  <label htmlFor="checkout-zip">Postal / Zip Code</label>
+                  <label htmlFor="checkout-zip">PIN Code *</label>
                   <input
                     type="text"
                     className="input-field"
                     id="checkout-zip"
-                    placeholder="e.g. 10001"
+                    placeholder="e.g. 560034 / 400001"
                     value={postalCode}
                     onChange={(e) => setPostalCode(e.target.value)}
                   />

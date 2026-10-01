@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1); // 1: Info, 2: OTP Verification
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,13 +52,17 @@ export default function RegisterPage() {
   // Step 1: Request OTP
   const handleRequestOtp = async (e) => {
     e.preventDefault();
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 10) {
+      setToast({ type: 'error', message: 'Please enter a valid 10-digit mobile number' });
+      return;
+    }
     if (password.length < 6) {
       setToast({ type: 'error', message: 'Password must be at least 6 characters' });
       return;
     }
     try {
       setLoading(true);
-      const data = await api.requestRegisterOtp({ name, email, password });
+      const data = await api.requestRegisterOtp({ name, email, password, phone });
       
       setTimeLeft(600);
       setResendCooldown(30);
@@ -87,7 +92,7 @@ export default function RegisterPage() {
     }
     try {
       setLoading(true);
-      await verifyRegister(name, email, password, cleanCode);
+      await verifyRegister(name, email, password, phone, cleanCode);
       setToast({ type: 'success', message: '✅ Account verified! Logged in successfully. Redirecting...' });
       setTimeout(() => navigate('/products'), 800);
     } catch (err) {
@@ -116,7 +121,7 @@ export default function RegisterPage() {
     if (resendCooldown > 0) return;
     try {
       setResending(true);
-      const data = await api.requestRegisterOtp({ name, email, password });
+      const data = await api.requestRegisterOtp({ name, email, password, phone });
       setTimeLeft(600);
       setResendCooldown(30);
       setOtp('');
@@ -175,6 +180,19 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   id="register-email"
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Phone Number *</label>
+                <input
+                  type="tel"
+                  className="input-field"
+                  placeholder="e.g. +91 98765 43210"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  id="register-phone"
                 />
               </div>
 

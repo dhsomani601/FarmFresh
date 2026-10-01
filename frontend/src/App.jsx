@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
 import StaticPage from './pages/StaticPage';
+import LogoutSuccessPage from './pages/LogoutSuccessPage';
 import FeedbackModal from './components/FeedbackModal';
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/logout-success" element={<LogoutSuccessPage />} />
                 <Route path="/about" element={<StaticPage />} />
                 <Route path="/policy" element={<StaticPage />} />
                 <Route path="/customer-care" element={<StaticPage />} />
